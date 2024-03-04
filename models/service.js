@@ -21,9 +21,12 @@ class Service {
         this.creationTimeStamp = new Date();
     }
 
-    async save() {
+    async checkBeforeSave(fullName) {
         const db = getDB();
         try {
+            const existingUser = await db.collection(collectionName).findOne({fullName});
+            // if(existingUser) throw new Error("User already exists");
+            if(existingUser) return {status:false,message:"Service already exists"}
             const result = await db.collection(collectionName).insertOne(this);
             return result.ops[0];
         } catch (error) {
@@ -32,9 +35,39 @@ class Service {
         }
     }
 
+    static async deleteServiceById(sId) {
+        const db = getDB();
+    
+        try {
+            
+            const existingService = await db.collection(collectionName).findOneAndDelete({ _id: new ObjectId(sId) });
+            console.log(existingService);
+            if (!existingService) {
+                return { status: false, message: "No Service with this ID exists" }
+            }
+    
+            return{ status: true, message: "Service deleted successfully" };
+        } catch (error) {
+            console.error("Error deleting service:", error);
+            return{ status: false, message: "Internal Server Error" };
+        }
+    }
+    static async updateServiceById(sId,newData) {
+        const db = getDB();
+    
+        try {            
+             const updatedResult = await db.collection(collectionName).findOneAndUpdate({ _id: new ObjectId(sId) },{$set: newData},{new:true});                
+            return{ status: true, message: "Service updated successfully", updatedService:updatedResult };
+        } catch (error) {
+            console.error("Error deleting service:", error);
+            return{ status: false, message: "Internal Server Error" };
+        }
+    }
+
     static async findServiceById(sId) {
         const db = getDB();
         try {
+            
             const serviceData = await db.collection(collectionName).findOne({ _id: new ObjectId(sId) });
             console.log("serviceData----", serviceData);
             return serviceData;
@@ -43,6 +76,7 @@ class Service {
             throw error;
         }
     }
+
 }
 
 module.exports = Service;

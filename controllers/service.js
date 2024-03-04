@@ -40,16 +40,18 @@ exports.createNewService = async (req, res, next) => {
     }
     // If validation passes, proceed to the next middleware or controller function
     // next();
-
+    
     const serviceObj = new Service(fullName, price, amenities, totalPlans, packages,
         servicePhotos, aboutUs, workDetails, discographyDetails, clientPhotos, reviews, featuredReviews);
 
-    // saving in database
-    return serviceObj.save()
-        .then(resultData => {
-            return res.json({ status: true, message: "Service added successfully", data: resultData["ops"][0] });
-        })
-        .catch(err => console.log(err));
+
+    const result_data = await serviceObj.checkBeforeSave(fullName)
+
+    return res.json(result_data);
+        // .then(resultData => {
+        //     return res.json({ status: true, message: "Service added successfully", data: resultData["ops"][0] });
+        // })
+        
 
 }
 
@@ -197,4 +199,41 @@ exports.getServiceBookingsDetails = async (req, res) => {
 
     return res.json({ status: true,data})
 
+}
+
+// exports.deleteService = async(req,res)=>{
+//     const serviceId = req.params.serviceId;
+//     console.log(serviceId);
+//     const db = getDB();
+//     existingService = await db.collection('services').findOneAndDelete({_id:serviceId})
+//     if(!existingService){
+//         return res.status(404).json({status:false, message:"No Service with this ID exists"});
+//     }
+// }
+
+
+exports.deleteService = async (req, res) => {
+    const sId = req.params.serviceId;
+    const deleted_result = await Service.deleteServiceById(sId)
+    res.send(deleted_result)
+};
+
+
+exports.updateService = async (req,res)=>{
+    const sId = req.params.serviceId;
+    const fullName = req.body.serviceName.trim();
+    const price = parseFloat(req.body.startingPrice);
+    const amenities = req.body.offerings;
+    const totalPlans = +req.body.TotalServices;
+    const packages = req.body.servicePlans;
+    const servicePhotos = req.body.ServicePhotos;
+    const aboutUs = req.body.description;
+    const workDetails = req.body.portfolio;
+    const discographyDetails = req.body.discography;
+    const clientPhotos = req.body.userPhotos;
+    const reviews = req.body.userReviews;
+    const featuredReviews = req.body.starredReviews;
+    const newData = {fullName,price,amenities,totalPlans,packages,servicePhotos,aboutUs,workDetails,discographyDetails,clientPhotos,reviews,featuredReviews}
+    const updated_result = await Service.updateServiceById(sId,newData)
+    res.send(updated_result)
 }

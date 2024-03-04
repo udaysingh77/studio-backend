@@ -332,51 +332,72 @@ exports.TestloginUserOTP = async (req, res, next) => {
 
 
 exports.loginUser = (req, res, next) => {
-
     const email = req.body.email;
     let password = req.body.password;
     const deviceId = req.body.deviceId;
     const userType = req.body.userType;
-
-    User.findUserByEmail(email)
-        .then(async userData => {
-            if (!userData) {
-                return res.status(404).json({ status: false, message: 'No User with this email exists' });
-            }
-
-            if (userData.userType != userType) {
-                return res.json({ status: false, message: userData.userType + " login required for this user" });
-            }
-
-            if (userType == "EMAIL") {
-                //Encrypting Password
-                var hash = crypto.createHash('sha256');
-                hash.update(password);
-                password = hash.digest('hex');
-
-                if (userData.password != password) {
-                    return res.status(401).json({ status: false, message: "Incorrect password" });
-                }
-            }
-
-            userData.deviceId = deviceId;
-
-            const db = getDb();
-            db.collection('users').updateOne({ email: email }, { $set: userData })
-                .then(resultData => {
-                    jwt.sign({ user: userData }, secretKey, (err, token) => {
-                        res.json({
-                            status: true,
-                            message: "Successfully Logged In",
-                            user: userData,
-                            token: token
-                        });
-                    });
-                })
-                .catch(err => console.log(err));
-        })
-
-}
+  
+    User.findUserByEmail(email).then(async (userData) => {
+      if (!userData) {
+        return res
+          .status(404)
+          .json({ status: false, message: "No User with this email exists" });
+      }
+  
+      if (userData.userType != userType) {
+        return res.json({
+          status: false,
+          message: userData.userType + " login required for this user",
+        });
+      }
+  
+      if (userType == "EMAIL") {
+        //Encrypting Password
+        var hash = crypto.createHash("sha256");
+        hash.update(password);
+        password = hash.digest("hex");
+  
+        if (userData.password != password) {
+          return res
+            .status(401)
+            .json({ status: false, message: "Incorrect password" });
+        }
+      }
+  
+      userData.deviceId = deviceId;
+  
+      jwt.sign({ user: userData }, secretKey, (err, token) => {
+        if (err) {
+          console.error("Error generating JWT token:", err);
+          return res
+            .status(500)
+            .json({ status: false, message: "Internal Server Error" });
+        }
+  
+        // Update user document with token
+        const db = getDb();
+        db.collection("users")
+          .updateOne(
+            { email: email },
+            { $set: { ...userData, refreshToken: token } }
+          )
+          .then((resultData) => {
+            res.json({
+              status: true,
+              message: "Successfully Logged In",
+              user: userData,
+              token: token,
+            });
+          })
+          .catch((err) => {
+            console.error("Error updating user document:", err);
+            res
+              .status(500)
+              .json({ status: false, message: "Internal Server Error" });
+          });
+      });
+    });
+  };
 
 
 exports.sendSignUpOtp = (req, res, next) => {
